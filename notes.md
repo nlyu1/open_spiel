@@ -188,4 +188,7 @@ The testing framework is comprehensive, covering unit tests, integration tests, 
 1. Running a single test: 
 ```
 ./open_spiel/scripts/build_and_run_tests.sh --virtualenv=false --install=false --test_only="python/tests/pyspiel_test.py"
+
+# Build-only & test game 
+./open_spiel/scripts/build_and_run_tests.sh --virtualenv=false --install=true --build_only=true
 ```

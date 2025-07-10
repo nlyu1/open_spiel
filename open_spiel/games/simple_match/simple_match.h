@@ -34,18 +34,12 @@ namespace simple_match {
 
 // Constants.
 inline constexpr int kNumPlayers = 2;
-inline constexpr int kNumRows = 3;
-inline constexpr int kNumCols = 3;
-inline constexpr int kNumCells = kNumRows * kNumCols;
-inline constexpr int kCellStates = 1 + kNumPlayers;  // empty, 'x', and 'o'.
+inline constexpr int maxRounds = 5; 
 
-inline constexpr int kNumberStates = 5478;
-
-// State of a cell.
-enum class CellState {
+enum class ChoiceState {
   kEmpty,
-  kNought,  // O
-  kCross,   // X
+  kHeads, 
+  kTails, 
 };
 
 // State of an in-play game.
@@ -70,25 +64,17 @@ class SimpleMatchState : public State {
   std::unique_ptr<State> Clone() const override;
   void UndoAction(Player player, Action move) override;
   std::vector<Action> LegalActions() const override;
-  std::vector<CellState> Board() const;
-  CellState BoardAt(int cell) const { return board_[cell]; }
-  CellState BoardAt(int row, int column) const {
-    return board_[row * kNumCols + column];
-  }
-  Player outcome() const { return outcome_; }
   void ChangePlayer() { current_player_ = current_player_ == 0 ? 1 : 0; }
 
   void SetCurrentPlayer(Player player) { current_player_ = player; }
 
  protected:
-  std::array<CellState, kNumCells> board_;
   void DoApplyAction(Action move) override;
 
- private:
-  bool HasLine(Player player) const;  // Does this player have a line?
-  bool IsFull() const;                // Is the board full?
-  Player current_player_ = 0;         // Player zero goes first
-  Player outcome_ = kInvalidPlayer;
+  std::array<ChoiceState, maxRounds*kNumPlayers> player_choices_; 
+
+ private:         
+  Player current_player_ = 0;     
   int num_moves_ = 0;
 };
 
@@ -96,29 +82,25 @@ class SimpleMatchState : public State {
 class SimpleMatchGame : public Game {
  public:
   explicit SimpleMatchGame(const GameParameters& params);
-  int NumDistinctActions() const override { return kNumCells; }
+  int NumDistinctActions() const override { return 2; }
   std::unique_ptr<State> NewInitialState() const override {
     return std::unique_ptr<State>(new SimpleMatchState(shared_from_this()));
   }
   int NumPlayers() const override { return kNumPlayers; }
-  double MinUtility() const override { return -1; }
+  double MinUtility() const override { return -maxRounds; }
   absl::optional<double> UtilitySum() const override { return 0; }
-  double MaxUtility() const override { return 1; }
+  double MaxUtility() const override { return maxRounds; }
   std::vector<int> ObservationTensorShape() const override {
-    return {kCellStates, kNumRows, kNumCols};
+    return {maxRounds * kNumPlayers};
   }
-  int MaxGameLength() const override { return kNumCells; }
+  // int MaxGameLength() const override { return kNumCells; }
+  int MaxGameLength() const override { return maxRounds*kNumPlayers; }
   std::string ActionToString(Player player, Action action_id) const override;
 };
 
-CellState PlayerToState(Player player);
-std::string StateToString(CellState state);
+std::string StateToString(ChoiceState state) ; 
 
-// Does this player have a line?
-bool BoardHasLine(const std::array<CellState, kNumCells>& board,
-                  const Player player);
-
-inline std::ostream& operator<<(std::ostream& stream, const CellState& state) {
+inline std::ostream& operator<<(std::ostream& stream, const ChoiceState& state) {
   return stream << StateToString(state);
 }
 
