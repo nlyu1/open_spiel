@@ -23,6 +23,7 @@ import pyspiel
 
 # Specify game names in alphabetical order, to make the test easier to read.
 EXPECTED_GAMES = frozenset([
+    "black_scholes",
     "simple_match",
     "2048",
     "add_noise",

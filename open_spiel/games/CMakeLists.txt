@@ -1,6 +1,8 @@
 set(GAME_SOURCES
   simple_match/simple_match.cc 
   simple_match/simple_match.h
+  black_scholes/black_scholes.cc
+  black_scholes/black_scholes.h
   amazons/amazons.cc
   amazons/amazons.h
   backgammon/backgammon.cc
@@ -671,6 +673,10 @@ add_test(ultimate_tic_tac_toe_test ultimate_tic_tac_toe_test)
 add_executable(simple_match_test simple_match/simple_match_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(simple_match_test simple_match_test)
+
+add_executable(black_scholes_test black_scholes/black_scholes_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(black_scholes_test black_scholes_test)
 
 # Custom modifications end 
 
