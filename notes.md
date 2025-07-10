@@ -188,7 +188,18 @@ The testing framework is comprehensive, covering unit tests, integration tests, 
 1. Running a single test: 
 ```
 ./open_spiel/scripts/build_and_run_tests.sh --virtualenv=false --install=false --test_only="python/tests/pyspiel_test.py"
+./open_spiel/scripts/build_and_run_tests.sh --virtualenv=false --install=false --test_only="python/../integration_tests/playthrough_test.py"
 
-# Build-only & test game 
+# Generate playthrough
+python open_spiel/python/examples/playthrough.py --game simple_match
+
+# Generate playthroughs & test 
+python open_spiel/python/examples/playthrough.py --game simple_match --output_file open_spiel/integration_tests/playthroughs/simple_match.txt
+./open_spiel/scripts/build_and_run_tests.sh --virtualenv=false --install=false --test_only="python/../integration_tests/playthrough_test.py"
+
+# Build-only
 ./open_spiel/scripts/build_and_run_tests.sh --virtualenv=false --install=true --build_only=true
+
+# Build-only & test in console 
+./open_spiel/scripts/build_and_run_tests.sh --virtualenv=false --install=true --build_only=true && python3 open_spiel/python/examples/mcts.py --game=simple_match --player1=human --player2=mcts
 ```

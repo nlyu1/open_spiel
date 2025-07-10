@@ -4,12 +4,12 @@ import random
 import pyspiel
 import numpy as np
 
-game = pyspiel.load_game("kuhn_poker")
+game = pyspiel.load_game("simple_match")
 state = game.new_initial_state()
 # %%
+states, actions = [], []
 while not state.is_terminal():
   legal_actions = state.legal_actions()
-  print(legal_actions)
   if state.is_chance_node():
     # Sample a chance event outcome.
     outcomes_with_probs = state.chance_outcomes()
@@ -22,4 +22,7 @@ while not state.is_terminal():
     # We arbitrarily select the first available action as an example.
     action = legal_actions[0]
     state.apply_action(action)
+  states.append(state)
+  actions.append(action) 
 # %%
+states, actions

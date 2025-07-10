@@ -109,10 +109,11 @@ SimpleMatchState::SimpleMatchState(std::shared_ptr<const Game> game) : State(gam
 
 std::string SimpleMatchState::ToString() const {
   std::string str;
+  absl::StrAppend(&str, "[");
   for (int j=0; j<num_moves_; j++) {
     absl::StrAppend(&str, "(", j%kNumPlayers, ",", StateToString(player_choices_[j]), ") "); 
   }
-  absl::StrAppend(&str, "\n");
+  absl::StrAppend(&str, "]");
   return str;
 }
 
@@ -121,11 +122,18 @@ bool SimpleMatchState::IsTerminal() const {
 }
 
 std::vector<double> SimpleMatchState::Returns() const {
+  if (!IsTerminal()) {
+    return {0.0, 0.0};  // No rewards until terminal
+  }
+  
   double num_equals = 0; 
   for (int j=0; j<maxRounds; j++) {
-    num_equals += (player_choices_[kNumPlayers*j] == player_choices_[kNumPlayers*j+1] ? 1 : 0);
+    if ((player_choices_[kNumPlayers*j] == ChoiceState::kEmpty) || (player_choices_[kNumPlayers*j+1] == ChoiceState::kEmpty)) {
+      break; 
+    }
+    num_equals += ((player_choices_[kNumPlayers*j] == player_choices_[kNumPlayers*j+1]) ? 1 : 0);
   }
-  std::cout << "Num equals: " << num_equals << std::endl;
+  // std::cout << "Num equals: " << num_equals << std::endl;
   return {-num_equals, num_equals}; 
 }
 
