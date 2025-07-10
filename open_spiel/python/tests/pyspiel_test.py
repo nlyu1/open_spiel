@@ -23,6 +23,7 @@ import pyspiel
 
 # Specify game names in alphabetical order, to make the test easier to read.
 EXPECTED_GAMES = frozenset([
+    "simple_match",
     "2048",
     "add_noise",
     "amazons",
@@ -160,6 +161,7 @@ class PyspielTest(absltest.TestCase):
     if (os.environ.get("OPEN_SPIEL_BUILD_WITH_ACPC", "OFF") == "ON" and
         "universal_poker" not in expected):
       expected.append("universal_poker")
+    print(f"Number of game_names={len(game_names)}, number expected={len(expected)}")
     expected = sorted(expected)
     self.assertCountEqual(game_names, expected)
 

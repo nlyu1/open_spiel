@@ -1,4 +1,6 @@
 set(GAME_SOURCES
+  simple_match/simple_match.cc 
+  simple_match/simple_match.h
   amazons/amazons.cc
   amazons/amazons.h
   backgammon/backgammon.cc
@@ -663,6 +665,14 @@ add_test(twixt_test twixt_test)
 add_executable(ultimate_tic_tac_toe_test ultimate_tic_tac_toe/ultimate_tic_tac_toe_test.cc
                ${OPEN_SPIEL_OBJECTS} $<TARGET_OBJECTS:tests>)
 add_test(ultimate_tic_tac_toe_test ultimate_tic_tac_toe_test)
+
+# Custom modifications start
+
+add_executable(simple_match_test simple_match/simple_match_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(simple_match_test simple_match_test)
+
+# Custom modifications end 
 
 if (${OPEN_SPIEL_BUILD_WITH_ACPC})
   add_executable(universal_poker_test universal_poker/universal_poker_test.cc ${OPEN_SPIEL_OBJECTS}
