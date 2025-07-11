@@ -58,8 +58,8 @@ while not state.is_terminal():
     print(f"Chance node: got {num_actions} outcomes and sampled {action_id}")
     state.apply_action(action_id)
   elif t == 0: 
-    num_contracts = input(f"t=0, Number of <={game_params['max_contracts']} contracts: ")
-    num_shares = input(f"t=0, Number of <={max_shares} shares: ")
+    num_contracts = input(f"t=0, Number of <{game_params['max_contracts']} contracts: ")
+    num_shares = input(f"t=0, Number of <{max_shares} shares: ")
     action_id = int(num_contracts) * max_shares + int(num_shares)
     state.apply_action(action_id)
   else:
@@ -74,4 +74,19 @@ print(state.observation_string(0))
 returns = state.returns()
 for pid in range(game.num_players()):
   print("Utility for player {} is {}".format(pid, returns[pid]))
+# %%
+
+state = game.new_initial_state()
+print(game_params)
+print(state.observation_string(0))
+state.apply_action(1*max_shares + 10)
+print(state.observation_string(0))
+state.apply_action(0)
+print(state.observation_string(0))
+state.apply_action(1*max_shares+100)
+print(state.observation_string(0))
+
+# Tests: 
+# 1. Correctly parse number of contracts & number of shares at step=1 
+# 2. Correctly parse 
 # %%

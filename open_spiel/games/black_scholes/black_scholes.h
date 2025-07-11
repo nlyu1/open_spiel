@@ -20,6 +20,8 @@ inline constexpr const int kStateEncodingSize = 12;
 class BlackScholesGame;
 
 // Exponential is calculated as (t<MaxTimeSteps) * deltaT * (sigma Z + mu) 
+// max_shares = max_shares_per_contract * max_contracts. 
+// Max_shares and max_shares_per_contract are both inclusive 
 inline constexpr double kDefaultDeltaT = 0.1; 
 inline constexpr int kDefaultMaxTimeSteps = 20; 
 inline constexpr double kDefaultSigma = 1.0; 

@@ -87,7 +87,7 @@ std::string BlackScholesState::ActionToString(Player player,
       }
     } else {
       auto [stock_delta, contract_delta] = game_->convert_action_to_deltas(move_id);
-      return absl::StrCat("Bought ", stock_delta, " shares, ", contract_delta, " contracts");
+      return absl::StrCat("Bought ", stock_delta, " stock, ", contract_delta, " option");
     }
 }
 
@@ -162,6 +162,11 @@ void BlackScholesState::DoApplyAction(Action move) {
     SPIEL_CHECK_EQ(timestep_ % 2, 0); 
     SPIEL_CHECK_EQ(CurrentPlayer(), 0); 
     auto [stock_delta, contract_delta] = game_->convert_action_to_deltas(move);
+    if (timestep_ == 0) {
+      SPIEL_CHECK_GE()
+    } else {
+      SPIEL_CHECK_EQ(contract_delta, 0); 
+    }
     
     // Manually construct new portfolio based on the deltas
     int new_stock_holding = portfolio_.stock_holding_ + stock_delta;
@@ -213,7 +218,7 @@ std::vector<Action> BlackScholesState::LegalActions() const {
   // On the first step, player picks both option stock
   int max_contracts = game_->GetMaxContracts(); 
   int max_shares = game_->GetMaxSharesPerContract() * max_contracts; 
-  int max_action = (timestep_ == 0) ? max_shares * max_contracts : max_shares; 
+  int max_action = (timestep_ == 0) ? (2 * max_shares + 1) * (2 * max_contracts + 1) : (2 * max_shares + 1); 
   std::vector<Action> actions(max_action + 1);
   std::iota(actions.begin(), actions.end(), 0);
   return actions;
@@ -290,10 +295,12 @@ double Portfolio::evaluate_payout(double stock_price, double strike_price, doubl
 }
 
 std::pair<int, int> BlackScholesGame::convert_action_to_deltas(Action action_id) const {
-  int num_shares_purchased = action_id % maxShares_; 
-  int num_contracts_purchased = action_id / maxShares_; 
+  int num_shares_purchased = action_id % (2 * maxShares_ + 1) - maxShares_; 
+  int num_contracts_purchased = action_id / (2 * maxShares_ + 1) - maxContracts_; 
   SPIEL_CHECK_LE(num_shares_purchased, maxShares_); 
   SPIEL_CHECK_LE(num_contracts_purchased, maxContracts_); 
+  SPIEL_CHECK_GE(num_shares_purchased, -maxShares_); 
+  SPIEL_CHECK_GE(num_contracts_purchased, -maxContracts_); 
   return std::make_pair(num_shares_purchased, num_contracts_purchased);
 }
 
