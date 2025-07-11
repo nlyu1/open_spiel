@@ -1,6 +1,95 @@
 #ifndef OPEN_SPIEL_GAMES_BLACKSCHOLES_H_
 #define OPEN_SPIEL_GAMES_BLACKSCHOLES_H_
 
+/*
+ * BLACK-SCHOLES OPTION TRADING GAME
+ * 
+ * This is a single-player sequential game that simulates option trading in a 
+ * Black-Scholes market environment. The player makes trading decisions while
+ * the environment updates stock prices according to a geometric Brownian motion.
+ * 
+ * GAME MECHANICS:
+ * - The game alternates between player moves (even timesteps) and environment 
+ *   moves (odd timesteps)
+ * - Player moves: Buy/sell stocks and option contracts
+ * - Environment moves: Update stock prices and apply interest to cash holdings
+ * - Game terminates after max_time_steps * 2 total moves
+ * - Final utility is the total portfolio value at termination
+ * 
+ * STOCK PRICE DYNAMICS:
+ * Stock prices follow a discrete-time geometric Brownian motion:
+ * S(t+1) = S(t) * exp((mu + sigma * Z) * delta_t)
+ * where Z is +1 or -1 with equal probability (50% each)
+ * 
+ * PORTFOLIO COMPONENTS:
+ * 1. Stock Holdings: Number of shares owned (can be negative for short positions)
+ * 2. Cash Holdings: Cash balance (earns interest at risk-free rate)
+ * 3. Contract Holdings: Number of European call option contracts (can be negative for short positions)
+ * 
+ * OPTION CONTRACTS:
+ * - European call options with payoff: max(S - strike_price, 0)
+ * - Premium must be paid upfront when buying options
+ * - Contracts can be bought (positive) or sold/written (negative)
+ * 
+ * GAME PARAMETERS:
+ * 
+ * sigma (default: 1.0):
+ *   Volatility parameter in the stock price model. Higher values increase 
+ *   price fluctuations. Used in the exponential: exp(sigma * Z * delta_t)
+ * 
+ * mu (default: 0.0):
+ *   Drift parameter representing the expected return rate of the stock.
+ *   Used in the exponential: exp(mu * delta_t). Positive values indicate
+ *   upward price trend, negative values indicate downward trend.
+ * 
+ * delta_t (default: 0.1):
+ *   Time step size for each environment move. Smaller values make the 
+ *   price evolution more granular. Affects both stock price updates and
+ *   interest rate compounding.
+ * 
+ * max_time_steps (default: 20):
+ *   Maximum number of time periods in the game. The total game length is
+ *   max_time_steps * 2 (since each period has both player and environment moves).
+ * 
+ * max_contracts (default: 100):
+ *   Maximum number of option contracts that can be held in either direction.
+ *   Range: [-max_contracts, +max_contracts]
+ * 
+ * max_shares_per_contract (default: 100):
+ *   Maximum number of shares that can be traded per contract unit.
+ *   Total max shares = max_contracts * max_shares_per_contract
+ * 
+ * initial_price (default: 1000.0):
+ *   Starting stock price at t=0. This is the reference point for all
+ *   subsequent price movements.
+ * 
+ * strike_price (default: 1000.0):
+ *   Strike price for the European call options. Options are in-the-money
+ *   when stock_price > strike_price, with payoff = stock_price - strike_price.
+ * 
+ * premium_price (default: 100.0):
+ *   Premium paid per option contract. This is the upfront cost when buying
+ *   options or the income received when selling/writing options.
+ * 
+ * interest_rate (default: 0.0):
+ *   Risk-free interest rate applied to cash holdings. Cash is compounded
+ *   each time step: cash(t+1) = cash(t) * exp(interest_rate * delta_t)
+ * 
+ * OBSERVATION ENCODING:
+ * The state is encoded as a 12-dimensional vector:
+ * [stock_holding, cash_holding, contract_holding, strike_price, stock_price, 
+ *  premium, delta_t, mu, sigma, interest_rate, t/maxTimeSteps, maxTimeSteps]
+ * 
+ * ACTION SPACE:
+ * On the first timestep: (2*max_shares + 1) * (2*max_contracts + 1) actions
+ * On subsequent timesteps: (2*max_shares + 1) actions (stock trades only)
+ * Actions encode both stock and contract purchase deltas.
+ * 
+ * TERMINAL UTILITY:
+ * Portfolio value = stock_value + cash + option_payoff
+ * where option_payoff = contract_holding * max(0, stock_price - strike_price)
+ */
+
 #include <array>
 #include <memory>
 #include <set>

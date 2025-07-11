@@ -162,11 +162,6 @@ void BlackScholesState::DoApplyAction(Action move) {
     SPIEL_CHECK_EQ(timestep_ % 2, 0); 
     SPIEL_CHECK_EQ(CurrentPlayer(), 0); 
     auto [stock_delta, contract_delta] = game_->convert_action_to_deltas(move);
-    if (timestep_ == 0) {
-      SPIEL_CHECK_GE()
-    } else {
-      SPIEL_CHECK_EQ(contract_delta, 0); 
-    }
     
     // Manually construct new portfolio based on the deltas
     int new_stock_holding = portfolio_.stock_holding_ + stock_delta;
@@ -296,7 +291,9 @@ double Portfolio::evaluate_payout(double stock_price, double strike_price, doubl
 
 std::pair<int, int> BlackScholesGame::convert_action_to_deltas(Action action_id) const {
   int num_shares_purchased = action_id % (2 * maxShares_ + 1) - maxShares_; 
-  int num_contracts_purchased = action_id / (2 * maxShares_ + 1) - maxContracts_; 
+  int contract_rawnum = action_id / (2 * maxShares_ + 1); 
+  // We use the mapping (0, -1, 1, -2, 2 ...) -> (0, 1, 2, 3, 4, 5)
+  int num_contracts_purchased = (contract_rawnum % 2 == 0) ? (contract_rawnum / 2) : -(contract_rawnum + 1) / 2; 
   SPIEL_CHECK_LE(num_shares_purchased, maxShares_); 
   SPIEL_CHECK_LE(num_contracts_purchased, maxContracts_); 
   SPIEL_CHECK_GE(num_shares_purchased, -maxShares_); 
