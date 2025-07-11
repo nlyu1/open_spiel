@@ -44,6 +44,14 @@ game = pyspiel.load_game("black_scholes", game_params)
 states, actions = [], []
 t = 0 
 
+def delta_to_action(delta_contracts, delta_shares, game_params):
+  max_contracts = game_params['max_contracts']
+  max_shares = game_params['max_shares_per_contract'] * max_contracts
+  assert (delta_shares >= -max_shares) and (delta_shares <= max_shares)
+  assert (delta_contracts >= -max_contracts) and (delta_contracts <= max_contracts)
+  action_id = delta_contracts * (2 * max_shares + 1) + delta_shares + max_shares
+  return int(action_id)
+
 state = game.new_initial_state()
 print(game_params)
 while not state.is_terminal():
@@ -58,12 +66,12 @@ while not state.is_terminal():
     print(f"Chance node: got {num_actions} outcomes and sampled {action_id}")
     state.apply_action(action_id)
   elif t == 0: 
-    num_contracts = input(f"t=0, Number of <{game_params['max_contracts']} contracts: ")
-    num_shares = input(f"t=0, Number of <{max_shares} shares: ")
-    action_id = int(num_contracts) * max_shares + int(num_shares)
+    num_contracts = int(input(f"t=0, Number of <{game_params['max_contracts']} contracts: "))
+    num_shares = int(input(f"t=0, Number of <{max_shares} shares: "))
+    action_id = delta_to_action(num_contracts, num_shares, game_params)
     state.apply_action(action_id)
   else:
-    action_id = int(input(f"t={t}, Number of shares to buy: "))
+    action_id = delta_to_action(input(f"t={t}, Number of contracts to buy: "), input(f"t={t}, Number of shares to buy: "), game_params)
     state.apply_action(action_id)
   action_string = state.action_to_string(player, action_id)
   print(f"Player {player}, action: {action_string}")
