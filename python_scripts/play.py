@@ -29,17 +29,23 @@ while not state.is_terminal():
 game_params = {
   "max_time_steps": 2, 
   "max_contracts": 2, 
-  "max_shares_per_contract": 10 
+  "max_shares_per_contract": 10, 
+  "initial_price": 1000., 
+  "strike_price": 1000., 
+  "premium_price": 100., 
+  "mu": 0.0, 
+  "sigma": 1.0, 
+  "delta_t": 0.1, 
+  "interest_rate": 0.1, 
 }
 max_shares = game_params['max_contracts'] * game_params['max_shares_per_contract']
 game = pyspiel.load_game("black_scholes", game_params)
-print('Hello')
 # %%
 states, actions = [], []
 t = 0 
 
 state = game.new_initial_state()
-
+print(game_params)
 while not state.is_terminal():
   legal_actions = state.legal_actions()
   player = state.current_player()

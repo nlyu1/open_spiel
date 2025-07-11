@@ -60,7 +60,9 @@ const GameType kGameType{
       {"max_contracts", GameParameter(kDefaultMaxContracts)},
       {"max_shares_per_contract", GameParameter(kDefaultMaxSharesPerContract)},
       {"initial_price", GameParameter(kDefaultInitialPrice)},
-      {"strike_price", GameParameter(kDefaultStrikePrice)}
+      {"strike_price", GameParameter(kDefaultStrikePrice)}, 
+      {"premium_price", GameParameter(kDefaultPremium)}, 
+      {"interest_rate", GameParameter(kDefaultInterestRate)}, 
     }
 };
 
@@ -103,22 +105,23 @@ void BlackScholesState::ObservationTensor(Player player,
   
   auto value_it = values.begin();
   
-  // Observation encoding: [delta_t, mu, sigma, strike_price, maxTimeSteps, t, stock_holding, cash_holding, contract_holding, stock_price]
-  *value_it++ = game_->GetDeltaT();
-  *value_it++ = game_->GetMu();
-  *value_it++ = game_->GetSigma();
-  *value_it++ = game_->GetStrikePrice();
-  *value_it++ = game_->GetMaxTimeSteps();
-  *value_it++ = timestep_; 
-  
-  // Current portfolio snapshot
+  // [stock_holding, cash_holding, contract_holding] + [strike_price, stock_price, premium] + [delta_t, mu, sigma, interest_rate] + [t/maxTimeSteps, maxTimeSteps]
   *value_it++ = portfolio_.stock_holding_;
   *value_it++ = portfolio_.cash_holding_;
   *value_it++ = portfolio_.contract_holding_;
-  
-  // Current stock price
-  *value_it++ = stock_price_;
 
+  *value_it++ = game_->GetStrikePrice();
+  *value_it++ = stock_price_;
+  *value_it++ = game_->GetPremium();                                
+
+  *value_it++ = game_->GetDeltaT();
+  *value_it++ = game_->GetMu();
+  *value_it++ = game_->GetSigma();
+  *value_it++ = game_->GetInterestRate();
+
+  *value_it++ = timestep_ / game_->GetMaxTimeSteps(); 
+  *value_it++ = game_->GetMaxTimeSteps();
+  
   SPIEL_CHECK_EQ(value_it, values.end());
 }
 
@@ -146,8 +149,14 @@ void BlackScholesState::DoApplyAction(Action move) {
     double multiplier = std::exp((
       (game_->GetSigma()) * ((move == 1) ? 1 : -1) + (game_->GetMu())
     ) * game_->GetDeltaT()); 
-    
+    double interest_rate_multiplier = std::exp(game_->GetInterestRate() * game_->GetDeltaT()); 
+
     stock_price_ = stock_price_ * multiplier; 
+    portfolio_ = Portfolio(
+      portfolio_.stock_holding_, 
+      portfolio_.cash_holding_ * interest_rate_multiplier, 
+      portfolio_.contract_holding_
+    ); 
   } else {
     // Player move
     SPIEL_CHECK_EQ(timestep_ % 2, 0); 
@@ -156,7 +165,7 @@ void BlackScholesState::DoApplyAction(Action move) {
     
     // Manually construct new portfolio based on the deltas
     int new_stock_holding = portfolio_.stock_holding_ + stock_delta;
-    double cash_delta = -stock_delta * stock_price_;  // Cost of stock change
+    double cash_delta = -stock_delta * stock_price_ - contract_delta * game_->GetPremium();
     double new_cash_holding = portfolio_.cash_holding_ + cash_delta;
     double new_contract_holding = portfolio_.contract_holding_ + contract_delta;
     
@@ -166,23 +175,33 @@ void BlackScholesState::DoApplyAction(Action move) {
 }
 
 void BlackScholesState::UndoAction(int player, Action action) {
-  if (IsPlayerNode()) {
-    // If environment made the last move, assert current move is player's turn 
-    SPIEL_CHECK_EQ(timestep_ % 2, 0); 
+  if (player == kChancePlayerId) {
+    // Undo environment move: reverse stock price and interest rate changes
     double multiplier = std::exp((
       (game_->GetSigma()) * ((action == 1) ? 1 : -1) + (game_->GetMu())
     ) * game_->GetDeltaT()); 
+    double interest_rate_multiplier = std::exp(game_->GetInterestRate() * game_->GetDeltaT()); 
+    
     stock_price_ = stock_price_ / multiplier; 
-  } else {
-    SPIEL_CHECK_EQ(timestep_ % 2, 1); 
-    auto [stock_delta, contract_delta] = game_->convert_action_to_deltas(action);
     portfolio_ = Portfolio(
-      portfolio_.stock_holding_ - stock_delta, 
-      portfolio_.cash_holding_ + stock_delta * stock_price_, 
-      portfolio_.contract_holding_ - contract_delta
+      portfolio_.stock_holding_, 
+      portfolio_.cash_holding_ / interest_rate_multiplier, 
+      portfolio_.contract_holding_
     ); 
+  } else {
+    // Undo player move: reverse portfolio changes
+    auto [stock_delta, contract_delta] = game_->convert_action_to_deltas(action);
+    
+    // Reverse the portfolio changes
+    int new_stock_holding = portfolio_.stock_holding_ - stock_delta;
+    double cash_delta = stock_delta * stock_price_ + contract_delta * game_->GetPremium();
+    double new_cash_holding = portfolio_.cash_holding_ + cash_delta;
+    double new_contract_holding = portfolio_.contract_holding_ - contract_delta;
+    
+    portfolio_ = Portfolio(new_stock_holding, new_cash_holding, new_contract_holding);
   }
-  timestep_--; 
+  
+  timestep_--;
 }
 
 std::vector<Action> BlackScholesState::LegalActions() const {
@@ -221,7 +240,7 @@ bool BlackScholesState::IsTerminal() const {
 }
 
 std::vector<double> BlackScholesState::Returns() const {
-  return {portfolio_.evaluate_payout(stock_price_, game_->GetStrikePrice())};
+  return {portfolio_.evaluate_payout(stock_price_, game_->GetStrikePrice(), game_->GetPremium())};
 }
 
 std::unique_ptr<State> BlackScholesState::Clone() const {
@@ -237,7 +256,9 @@ BlackScholesGame::BlackScholesGame(const GameParameters& params)
       maxTimeSteps_(ParameterValue<int>("max_time_steps")),
       maxContracts_(ParameterValue<int>("max_contracts")),
       maxSharesPerContract_(ParameterValue<int>("max_shares_per_contract")), 
-      initialPrice_(ParameterValue<double>("initial_price")) {
+      initialPrice_(ParameterValue<double>("initial_price")),
+      premium_(ParameterValue<double>("premium_price")),
+      interest_rate_(ParameterValue<double>("interest_rate")) {
   maxShares_ = maxSharesPerContract_ * maxContracts_; 
 }
 
@@ -261,10 +282,10 @@ Portfolio Portfolio::finance_stock(float stock_delta, float stock_price) const {
   return Portfolio(stock_holding_ + stock_delta, cash_holding_ - stock_delta * stock_price, contract_holding_);
 }
 
-double Portfolio::evaluate_payout(double stock_price, double strike_price) const {
+double Portfolio::evaluate_payout(double stock_price, double strike_price, double premium) const {
   // Calculate total portfolio value: stock value + cash + option payoff
   double stock_value = stock_holding_ * stock_price;
-  double option_payoff = contract_holding_ * std::max(0.0, stock_price - strike_price);
+  double option_payoff = contract_holding_ * std::max(0.0, stock_price - strike_price); 
   return stock_value + cash_holding_ + option_payoff;
 }
 

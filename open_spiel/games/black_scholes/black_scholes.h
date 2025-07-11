@@ -15,21 +15,22 @@ namespace black_scholes {
 inline constexpr const int kNumPlayers = 1;
 
 // Observation encoding: 
-//   [delta_t, mu, sigma, strike_price, maxTimeSteps, t, stock_holding, cash_holding, contract_holding, stock_price]
-inline constexpr const int kStateEncodingSize = 10;
+// [stock_holding, cash_holding, contract_holding] + [strike_price, stock_price, premium] + [delta_t, mu, sigma, interest_rate] + [t, maxTimeSteps]
+inline constexpr const int kStateEncodingSize = 12;
 class BlackScholesGame;
 
-// We count in pennies 
-inline constexpr double kDefaultDeltaT = 0.01; 
-inline constexpr double kDefaultMvp = 0.01; 
+// Exponential is calculated as (t<MaxTimeSteps) * deltaT * (sigma Z + mu) 
+inline constexpr double kDefaultDeltaT = 0.1; 
 inline constexpr int kDefaultMaxTimeSteps = 20; 
 inline constexpr double kDefaultSigma = 1.0; 
 inline constexpr double kDefaultMu = 0.0;
 inline constexpr double kDefaultStrikePrice = 1000.0;
+inline constexpr double kDefaultPremium = 100.0; 
 
 inline constexpr int kDefaultMaxContracts = 100;
 inline constexpr int kDefaultMaxSharesPerContract = 100;
 inline constexpr double kDefaultInitialPrice = 1000; 
+inline constexpr double kDefaultInterestRate = 0.0; 
 
 // EV of exp[\sigma Z + \mu] = exp(\mu + \sigma^2/2)
 // Var of exp[\sigma Z + \mu] = exp(2\mu + \sigma^2) * (exp(\sigma^2) - 1)
@@ -47,7 +48,7 @@ class Portfolio {
   public:
     Portfolio(int stock_holding=0, double cash_holding=0.0, double contract_holding=0.0)
       : stock_holding_(stock_holding), cash_holding_(cash_holding), contract_holding_(contract_holding) {}
-  double evaluate_payout(double stock_price, double strike_price) const;
+  double evaluate_payout(double stock_price, double strike_price, double premium) const;
   std::string ToString() const; 
   // Finance stock by selling cash; stock_delta can be negative 
   Portfolio finance_stock(float stock_delta, float stock_price) const; 
@@ -123,6 +124,8 @@ class BlackScholesGame : public Game {
   int GetMaxSharesPerContract() const { return maxSharesPerContract_; }
   int GetMaxShares() const { return maxShares_; }
   double GetInitialPrice() const { return initialPrice_; }
+  double GetPremium() const { return premium_; }
+  double GetInterestRate() const { return interest_rate_; }
   std::pair<int, int> convert_action_to_deltas(Action action_id) const; 
 
   private:
@@ -135,6 +138,8 @@ class BlackScholesGame : public Game {
     int maxSharesPerContract_;
     int maxShares_;
     double initialPrice_;
+    double premium_; 
+    double interest_rate_; 
 };
 
 }  // namespace black_scholes

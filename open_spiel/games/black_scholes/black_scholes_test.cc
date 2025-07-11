@@ -32,9 +32,6 @@ namespace black_scholes {
 namespace {
 
 namespace testing = open_spiel::testing;
-
-
-
 }  // namespace
 }  // namespace black_scholes
 }  // namespace open_spiel
