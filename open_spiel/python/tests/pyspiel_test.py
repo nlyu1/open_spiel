@@ -131,6 +131,7 @@ EXPECTED_GAMES = frozenset([
     "rbc",
     "restricted_nash_response",
     "sheriff",
+    "simple_bluff",
     "skat",
     "start_at",
     "solitaire",

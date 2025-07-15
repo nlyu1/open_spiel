@@ -200,7 +200,8 @@ void BlackScholesState::UndoAction(int player, Action action) {
     
     portfolio_ = Portfolio(new_stock_holding, new_cash_holding, new_contract_holding);
   }
-  
+  history_.pop_back();
+  --move_number_;
   timestep_--;
 }
 
@@ -302,7 +303,7 @@ std::pair<int, int> BlackScholesGame::convert_action_to_deltas(Action action_id)
 }
 
 int BlackScholesGame::NumDistinctActions() const {
-  return maxShares_ * maxContracts_; 
+  return (2 * maxShares_ + 1) * (2 * maxContracts_ + 1); 
 }
 
 }  // namespace black_scholes

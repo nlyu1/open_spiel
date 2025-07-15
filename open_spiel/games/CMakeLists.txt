@@ -98,6 +98,12 @@ set(GAME_SOURCES
   havannah/havannah.h
   hearts/hearts.cc
   hearts/hearts.h
+  # high_low_trading/high_low_trading.cc
+  # high_low_trading/high_low_trading.h
+  high_low_trading/market.cc
+  high_low_trading/market.h
+  high_low_trading/action_manager.cc
+  high_low_trading/action_manager.h
   hex/hex.cc
   hex/hex.h
   hive/hive.cc
@@ -175,6 +181,8 @@ set(GAME_SOURCES
   rbc/rbc.h
   sheriff/sheriff.cc
   sheriff/sheriff.h
+  simple_bluff/simple_bluff.cc
+  simple_bluff/simple_bluff.h
   skat/skat.cc
   skat/skat.h
   solitaire/solitaire.cc
@@ -219,6 +227,13 @@ if (${OPEN_SPIEL_BUILD_WITH_ACPC})
   set(GAME_SOURCES ${GAME_SOURCES} universal_poker/universal_poker.cc universal_poker/universal_poker.h)
 endif()
 
+include(FetchContent)
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG        10.1.1  # Use a specific version
+)
+FetchContent_MakeAvailable(fmt)
 
 add_library (games OBJECT ${GAME_SOURCES})
 
@@ -226,6 +241,7 @@ target_include_directories (games PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories (games PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}../pybind11_abseil)
 target_include_directories (games PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}../pybind11_json)
 target_include_directories (games PUBLIC ${Python3_INCLUDE_DIRS})
+
 
 if (${OPEN_SPIEL_BUILD_WITH_HANABI})
   add_subdirectory(hanabi)
@@ -617,6 +633,10 @@ add_executable(sheriff_test sheriff/sheriff_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(sheriff_test sheriff_test)
 
+add_executable(simple_bluff_test simple_bluff/simple_bluff_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(simple_bluff_test simple_bluff_test)
+
 add_executable(skat_test skat/skat_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(skat_test skat_test)
@@ -677,6 +697,10 @@ add_test(simple_match_test simple_match_test)
 add_executable(black_scholes_test black_scholes/black_scholes_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(black_scholes_test black_scholes_test)
+
+add_executable(high_low_trading_action_manager_tests high_low_trading/action_manager_tests.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(high_low_trading_action_manager_tests high_low_trading_action_manager_tests)
 
 # Custom modifications end 
 
