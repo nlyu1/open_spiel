@@ -62,6 +62,7 @@ std::ostream& operator<<(std::ostream& os, const PlayerRole& role);
 
 class ChanceContractValueAction {
   public:
+    ChanceContractValueAction() : contract_value_(0) {}  // Default constructor
     ChanceContractValueAction(Action raw_action) : contract_value_(raw_action) {}
     int contract_value_; // [1, MaxContractValue]
     std::string ToString() const; 
@@ -69,15 +70,17 @@ class ChanceContractValueAction {
 
 class ChanceHighLowAction {
   public:
+    ChanceHighLowAction() : is_high_(false) {}  // Default constructor
     ChanceHighLowAction(bool is_high) : is_high_(is_high) {}
     
     bool is_high_; 
     std::string ToString() const; 
 }; 
 
-class ChanceCustomerTradeAction {
+class PlayerQuoteAction {
   public:
-    ChanceCustomerTradeAction(int bid_size, int bid_price, int ask_size, int ask_price) 
+    PlayerQuoteAction() : bid_size_(0), bid_price_(1), ask_size_(0), ask_price_(1) {}  // Default constructor
+    PlayerQuoteAction(int bid_size, int bid_price, int ask_size, int ask_price) 
         : bid_size_(bid_size), bid_price_(bid_price), ask_size_(ask_size), ask_price_(ask_price) {}
     
     int bid_size_; // [0, CustomerMaxSize]
@@ -89,6 +92,7 @@ class ChanceCustomerTradeAction {
 
 class ChancePermutationAction {
   public:
+    ChancePermutationAction() {}  // Default constructor
     ChancePermutationAction(const std::vector<PlayerRole>& player_roles, const std::vector<int>& permutation) 
         : player_roles_(player_roles), permutation_(permutation) {}
     ChancePermutationAction(std::vector<PlayerRole>&& player_roles, std::vector<int>&& permutation) 
@@ -101,6 +105,7 @@ class ChancePermutationAction {
 
 class ChanceCustomerSizeAction {
   public:
+    ChanceCustomerSizeAction() : customer_size_(0) {}  // Default constructor
     ChanceCustomerSizeAction(int customer_size) : customer_size_(customer_size) {}
     
     int customer_size_; // [-CustomerMaxSize, CustomerMaxSize] - (0)
@@ -109,6 +114,7 @@ class ChanceCustomerSizeAction {
 
 class PlayerTradingAction {
   public:
+    PlayerTradingAction() : bid_size_(0), bid_price_(1), ask_size_(0), ask_price_(1) {}  // Default constructor
     PlayerTradingAction(int bid_size, int bid_price, int ask_size, int ask_price) 
         : bid_size_(bid_size), bid_price_(bid_price), ask_size_(ask_size), ask_price_(ask_price) {}
     
@@ -122,14 +128,14 @@ class PlayerTradingAction {
 using ActionVariant = std::variant<
   ChanceContractValueAction,
   ChanceHighLowAction,
-  ChanceCustomerTradeAction,
+  PlayerQuoteAction,
   ChancePermutationAction,
   ChanceCustomerSizeAction,
   PlayerTradingAction
 >; 
 
 // Utility functions for ActionVariant
-std::string ToString(const ActionVariant& action);
+std::string ActionVariantToString(const ActionVariant& action);
 std::ostream& operator<<(std::ostream& os, const ActionVariant& action);
 
 // Helper function to safely get a specific action type
@@ -147,6 +153,7 @@ std::ostream& operator<<(std::ostream& os, const ActionVariant& action);
 
 class ActionManager {
   public:
+    ActionManager() = default;  // Default constructor
     ActionManager(const Config& config); 
     ActionVariant RawToStructuredAction(GamePhase phase, Action raw_action) const; 
     ActionVariant RawToStructuredAction(int timestep, Action raw_action) const; 
@@ -154,9 +161,15 @@ class ActionManager {
     GamePhase game_phase_of_timestep(int timestep) const; 
     // Returns the min and max legal action, inclusive. 
     std::pair<int, int> valid_action_range(GamePhase phase) const; 
+    int GetNumPlayers() const { return config_.num_players_; }
+    int GetStepsPerPlayer() const { return config_.steps_per_player_; }
+    int GetMaxContractsPerTrade() const { return config_.max_contracts_per_trade_; }
+    int GetMaxContractValue() const { return config_.max_contract_value_; }
+    int GetCustomerMaxSize() const { return config_.customer_max_size_; }
   private: 
     Config config_; 
 };
 
 std::vector<int> nth_permutation(int x, int n); 
 int permutation_rank(const std::vector<int>& perm); 
+int factorial(int n);

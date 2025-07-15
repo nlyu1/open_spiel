@@ -40,7 +40,7 @@ void Market::ClearOrders(customerId customer_id) {
     }
 }
 
-std::vector<TradeEntry> Market::AddOrder(OrderEntry order) {
+std::vector<OrderFillEntry> Market::AddOrder(OrderEntry order) {
     if (order.is_bid) {
         buy_orders_.push(order);
     } else {
@@ -78,8 +78,8 @@ std::vector<customerId> Market::GetCustomers() {
     return customers;
 }
 
-std::vector<TradeEntry> Market::MatchOrders() {
-    std::vector<TradeEntry> trades; 
+std::vector<OrderFillEntry> Market::MatchOrders() {
+    std::vector<OrderFillEntry> trades; 
     while (!buy_orders_.empty() && !sell_orders_.empty()) {
         OrderEntry buy_order = buy_orders_.top();
         OrderEntry sell_order = sell_orders_.top();
@@ -108,7 +108,7 @@ std::vector<TradeEntry> Market::MatchOrders() {
         customerId customer_id = is_sell_quote ? buy_order.customer_id : sell_order.customer_id; 
         uint64_t quote_tid = is_sell_quote ? sell_order.tid : buy_order.tid; 
         
-        trades.push_back(TradeEntry(trade_price, trade_size, tid, quote_size, quoter_id, customer_id, quote_tid, is_sell_quote));
+        trades.push_back(OrderFillEntry(trade_price, trade_size, tid, quote_size, quoter_id, customer_id, quote_tid, is_sell_quote));
         
         // Calculate remaining orders and push back if necessary 
         uint64_t remaining_sell_size = sell_order.size - trade_size; 
@@ -157,7 +157,7 @@ std::string OrderEntry::ToString() const {
     return oss.str();
 }
 
-std::string TradeEntry::ToString() const {
+std::string OrderFillEntry::ToString() const {
     std::ostringstream oss;
     oss << "sz " << size << " @ px " << price << " on t=" << tid 
         << ". User " << customer_id << " crossed with user " << quoter_id 
@@ -222,8 +222,8 @@ std::string Market::ToString() const{
 }  // namespace trade_matching
 }  // namespace open_spiel
 
-// Stream operator for std::vector<TradeEntry>
-std::ostream& operator<<(std::ostream& os, const std::vector<open_spiel::trade_matching::TradeEntry>& trades) {
+// Stream operator for std::vector<OrderFillEntry>
+std::ostream& operator<<(std::ostream& os, const std::vector<open_spiel::trade_matching::OrderFillEntry>& trades) {
     os << "************* Trade entries *************\n";
     for (size_t i = 0; i < trades.size(); ++i) {
         os << (i + 1) << ". " << trades[i].ToString() << "\n";

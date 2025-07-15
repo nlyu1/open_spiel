@@ -104,7 +104,7 @@ void TestActionConsistency() {
       if (raw_action != reverse_raw_action) {
         if (kVerboseOutput) {
           std::cout << "  DISCREPANCY: Original=" << raw_action << " Reverse=" << reverse_raw_action 
-                   << " Structured=" << ToString(structured_action) << std::endl;
+                   << " Structured=" << ActionVariantToString(structured_action) << std::endl;
         }
         discrepancy_count++;
       }
@@ -152,7 +152,7 @@ void TestSpecificActionConversions() {
   // Test ChanceCustomerSizeAction
   ActionVariant customer_action = action_manager.RawToStructuredAction(GamePhase::kCustomerSize, 5);
   SPIEL_CHECK_TRUE(std::holds_alternative<ChanceCustomerSizeAction>(customer_action));
-  SPIEL_CHECK_EQ(std::get<ChanceCustomerSizeAction>(customer_action).customer_size_, 0);
+  SPIEL_CHECK_EQ(std::get<ChanceCustomerSizeAction>(customer_action).customer_size_, 1);
   
   // Test PlayerTradingAction
   ActionVariant trading_action = action_manager.RawToStructuredAction(GamePhase::kPlayerTrading, 0);

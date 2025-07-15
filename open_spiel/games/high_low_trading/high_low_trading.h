@@ -22,17 +22,21 @@
 
 #include "open_spiel/spiel.h"
 #include "open_spiel/spiel_utils.h"
+#include "open_spiel/games/high_low_trading/market.h"
+// Game default parameters are all packaged inside "action_manager.h" 
+#include "action_manager.h"
 
 namespace open_spiel {
 namespace high_low_trading {
 
-inline constexpr int kDefaultStepsPerPlayer = 100; 
-inline constexpr int kDefaultMaxContractsPerTrade = 5; 
-inline constexpr int kDefaultCustomerMaxSize = 5; 
-inline constexpr int kDefaultMaxContractValue = 30;
-inline constexpr int kDefaultMaxPlayers = 5; 
-
 class HighLowTradingGame;
+
+class PlayerPosition {
+  public:
+    int num_contracts=0; 
+    int cash_balance=0; 
+    std::string ToString() const; 
+}; 
 
 class HighLowTradingState : public State {
  public:
@@ -57,180 +61,58 @@ class HighLowTradingState : public State {
   std::unique_ptr<State> ResampleFromInfostate(
       int player_id, std::function<double()> rng) const override;
 
-  // Getters for internal state
-  int GetPlayerValue(Player player) const { return player_values_[player]; }
-  bool DidPlayerBet() const { return player1_bet_; }
-  bool DidPlayerAccept() const { return player2_accept_; }
-
  protected:
   void DoApplyAction(Action move) override;
+  const HighLowTradingGame* GetGame() const;
+  const ActionManager& GetActionManager() const;
+  int GetContractValue() const; 
 
  private:
-  // Internal state: [player1_value, player2_value, player1_bets, player2_accepts]
-  std::array<int, 2> player_values_;  // 0 or 1 for each player
-  bool player1_bet_;                  // whether player 1 chose to bet
-  bool player2_accept_;               // whether player 2 accepted the bet
-  int winner_;                        // winning player, or kInvalidPlayer if not terminal
-  int pot_;                          // current pot size
-  std::array<int, 2> contributions_;  // how much each player contributed
+  std::array<ChanceContractValueAction, 2> contract_values_; 
+  ChanceHighLowAction contract_high_settle_; 
+  ChancePermutationAction player_permutation_; 
+  std::vector<std::pair<int, PlayerQuoteAction>> player_quotes_; 
+  std::vector<PlayerPosition> player_positions_; 
+  // Encodes the target positions of each player (indexed by player_id)
+  // 0 stands for no requirement, since customer sizes are always nonzero. 
+  std::vector<int> player_target_positions_; 
+  std::vector<trade_matching::OrderFillEntry> order_fills_; 
+  trade_matching::Market market_; 
 };
 
 class HighLowTradingGame : public Game {
   public:
     explicit HighLowTradingGame(const GameParameters& params);
-    int NumDistinctActions() const override { return 2; }
+    int NumDistinctActions() const override; 
+    int MaxChanceOutcomes() const override; 
     std::unique_ptr<State> NewInitialState() const override;
-    int MaxChanceOutcomes() const override { return 2; }
-    int NumPlayers() const override { return 2; }
-    double MinUtility() const override { return -2.0; }
-    double MaxUtility() const override { return 2.0; }
-    absl::optional<double> UtilitySum() const override { return 0; }
     std::vector<int> InformationStateTensorShape() const override;
     std::vector<int> ObservationTensorShape() const override;
-    int MaxGameLength() const override { return 4; }  // 2 chance + 2 player moves
-    int MaxChanceNodesInHistory() const override { return 2; }
 
-    int GetCustomerMaxSize() const { return customer_max_size_; }
-    int GetStepsPerPlayer() const { return steps_per_player_; }
-    int GetMaxContractsPerTrade() const { return max_contracts_per_trade_; }
-    int GetContractMaxValue() const { return contract_max_value_; }
+    int MaxGameLength() const override {
+      return MaxChanceNodesInHistory() + GetStepsPerPlayer() * GetNumPlayers(); 
+    }
+    int MaxChanceNodesInHistory() const override {
+      // See action_manager.h: four chance moves (high, low, choice, permutation) with num_customer assignments. 
+      return 4 + (GetNumPlayers() - 3); 
+    }
+    double MinUtility() const override { return -MaxUtility(); }
+    double MaxUtility() const override {
+      return (GetMaxContractValue() - 1) * GetMaxContractsPerTrade() * GetStepsPerPlayer() * GetNumPlayers(); 
+    }
+    int NumPlayers() const override { return GetNumPlayers(); }
+    absl::optional<double> UtilitySum() const override { return 0; }
 
-  private: 
-    int customer_max_size_; 
-    int steps_per_player_; 
-    int max_contracts_per_trade_; 
-    int contract_max_value_; 
-};
+    ActionManager GetActionManager() const { return action_manager_; }
 
+    int GetNumPlayers() const { return action_manager_.GetNumPlayers(); }
+    int GetStepsPerPlayer() const { return action_manager_.GetStepsPerPlayer(); }
+    int GetMaxContractsPerTrade() const { return action_manager_.GetMaxContractsPerTrade(); }
+    int GetMaxContractValue() const { return action_manager_.GetMaxContractValue(); }
+    int GetCustomerMaxSize() const { return action_manager_.GetCustomerMaxSize(); }
 
-struct ChanceContractValueAction {
-  int contract_value; // [1, MaxContractValue]
-}; 
-
-struct ChanceHighLowAction {
-  bool is_high; 
-}; 
-
-struct ChanceCustomerSizeAction {
-  int customer_size; // [-CustomerMaxSize, CustomerMaxSize]
-}; 
-
-struct ChancePermutationAction {
-  std::array<int, 5> permutation; // [0, 4]
-}; 
-
-struct PlayerTradingAction {
-  int bid_size; // [-MaxContractPerTrade, MaxContractPerTrade]
-  int bid_price; // [0, MaxContractValue]
-  int ask_size; // [-MaxContractPerTrade, MaxContractPerTrade]
-  int ask_price; // [0, MaxContractValue]
-}; 
-
-using ActionVariant = std::variant<
-  ChanceContractValueAction,
-  ChanceHighLowAction,
-  ChanceCustomerSizeAction,
-  ChancePermutationAction,
-  PlayerTradingAction
->; 
-
-// Base class for Codecs which convert between action_id (int) and structured actions
-class ActionCodec {
-  public:
-    virtual ~ActionCodec() = default; 
-    virtual Action Encode(const ActionVariant& action) const = 0; 
-    virtual ActionVariant Decode(Action action) const = 0; 
-    virtual std::vector<ActionVariant> GetLegalActionVariants() const = 0; 
-    virtual std::vector<Action> GetLegalActions() const = 0; 
-};
-
-class ChanceValueCodec : public ActionCodec {
-  public:
-    ChanceValueCodec(int max_contract_value); 
-    Action Encode(const ActionVariant& action) const override; 
-    ActionVariant Decode(Action action) const override; 
-    std::vector<ActionVariant> GetLegalActionVariants() const override; 
-    std::vector<Action> GetLegalActions() const override; 
-};
-
-class ChanceHighLowCodec : public ActionCodec {
-  public:
-    ChanceHighLowCodec(); 
-    Action Encode(const ActionVariant& action) const override; 
-    ActionVariant Decode(Action action) const override; 
-    std::vector<ActionVariant> GetLegalActionVariants() const override; 
-    std::vector<Action> GetLegalActions() const override; 
-}; 
-
-class ChanceCustomerSizeCodec : public ActionCodec {
-  public:
-    ChanceCustomerSizeCodec(int customer_max_size); 
-    Action Encode(const ActionVariant& action) const override; 
-    ActionVariant Decode(Action action) const override; 
-    std::vector<ActionVariant> GetLegalActionVariants() const override; 
-    std::vector<Action> GetLegalActions() const override; 
-}; 
-
-class ChancePermutationCodec : public ActionCodec {
-  public:
-    ChancePermutationCodec(); 
-    Action Encode(const ActionVariant& action) const override; 
-    ActionVariant Decode(Action action) const override; 
-    std::vector<ActionVariant> GetLegalActionVariants() const override; 
-    std::vector<Action> GetLegalActions() const override; 
-};
-
-class PlayerTradingCodec : public ActionCodec {
-  public:
-    PlayerTradingCodec(int max_contract_value, int max_contracts_per_trade); 
-    Action Encode(const ActionVariant& action) const override; 
-    ActionVariant Decode(Action action) const override; 
-    std::vector<ActionVariant> GetLegalActionVariants() const override; 
-    std::vector<Action> GetLegalActions() const override; 
-}; 
-
-// t=0, chance move: draws a uniform number [1, MaxContractValue] inclusive 
-// t=1, chance move: draws another uniform number [1, MaxContractValue] inclusive 
-// t=2, chance move: draws uniform "high" or "low" 
-// t=3, chance move: draws customer size [-CustomerMaxSize, CustomerMaxSize]
-// t=4, chance move: draws another customer size [-CustomerMaxSize, CustomerMaxSize] 
-// t=5, draws a permutation of 5! for the 5 customers 
-// t=6, ....: players execute in round-robin order.
-//    Player observation: 
-//      - order_book [p0_bid, p0_bid_sz, p1_bid, p1_bid_sz, ...] = 5 * 2 
-//      - Player private info: [role\in (0, 1, 2), info]; size 2 
-//    Player action: 
-//      - (bid_size, bid_price, ask_size, ask_price). Max value `MaxContracValue^2 * MaxContractsPerTrade ^ 2`
-//   Player order executes against market 
-enum class GamePhase {
-  kChanceValue1, 
-  kChanceValue2, 
-  kChanceHighLow, 
-  kChanceCustomerSize1, 
-  kChanceCustomerSize2, 
-  kChancePermutation, 
-  kPlayerTrading, 
-}; 
-
-class HighLowTradingActionManager {
-  public:
-      explicit HighLowTradingActionManager(const HighLowTradingGame* game);
-      
-      // Main interface methods
-      Action EncodeAction(const ActionVariant& action, const HighLowTradingState& state) const;
-      ActionVariant DecodeAction(Action action, const HighLowTradingState& state) const;
-      std::vector<ActionVariant> GetLegalActionVariants(const HighLowTradingState& state) const;
-      std::vector<Action> GetLegalActions(const HighLowTradingState& state) const;
-      
-      // Utility methods
-      std::string ActionVariantToString(const ActionVariant& action) const;
-      ActionVariant StringToActionVariant(const std::string& str, const HighLowTradingState& state) const;
-  
   private:
-      std::unique_ptr<ActionCodec> GetCodecForState(const HighLowTradingState& state) const;
-      GamePhase DeterminePhase(const HighLowTradingState& state) const;
-      
-      const HighLowTradingGame* game_;
+    ActionManager action_manager_; 
 };
 
 }  // namespace high_low_trading

@@ -85,7 +85,7 @@ class TradeCommState : public State {
   Phase phase_;
   std::vector<int> items_;
   std::vector<int> comm_history_;
-  std::vector<Action> trade_history_;
+  std::vector<Action> order_fills_;
 };
 
 class TradeCommGame : public Game {

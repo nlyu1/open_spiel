@@ -98,8 +98,8 @@ set(GAME_SOURCES
   havannah/havannah.h
   hearts/hearts.cc
   hearts/hearts.h
-  # high_low_trading/high_low_trading.cc
-  # high_low_trading/high_low_trading.h
+  high_low_trading/high_low_trading.cc
+  high_low_trading/high_low_trading.h
   high_low_trading/market.cc
   high_low_trading/market.h
   high_low_trading/action_manager.cc

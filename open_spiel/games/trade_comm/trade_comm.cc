@@ -84,7 +84,7 @@ std::string TradeCommState::ActionToString(Player player,
 }
 
 bool TradeCommState::IsTerminal() const {
-  return (phase_ == Phase::kTrade && trade_history_.size() == 2);
+  return (phase_ == Phase::kTrade && order_fills_.size() == 2);
 }
 
 std::vector<double> TradeCommState::Returns() const {
@@ -94,8 +94,8 @@ std::vector<double> TradeCommState::Returns() const {
     // Check for a compatible trade. A compatible trade satisfies:
     //   - Agent X has item A, and offers A for B
     //   - Agent Y has item B, and offers B for A
-    std::pair<int, int> trade0 = DecodeTrade(trade_history_[0], num_items_);
-    std::pair<int, int> trade1 = DecodeTrade(trade_history_[1], num_items_);
+    std::pair<int, int> trade0 = DecodeTrade(order_fills_[0], num_items_);
+    std::pair<int, int> trade1 = DecodeTrade(order_fills_[1], num_items_);
     if (items_[0] == trade0.first && items_[1] == trade1.first &&
         trade0.first == trade1.second && trade1.first == trade0.second) {
       return {1.0, 1.0};
@@ -131,21 +131,21 @@ std::string TradeCommState::ObservationString(Player player) const {
   // Trade proposals are treated as simultaneous, so not included in the
   // observation, but we do mark how many trade actions have happened to agents
   // can work out what trading round they're on.
-  absl::StrAppend(&str, "Trade history size: ", trade_history_.size(), "\n");
+  absl::StrAppend(&str, "Trade history size: ", order_fills_.size(), "\n");
 
   // Players can see their own trades if they were made.
-  if (player < trade_history_.size()) {
+  if (player < order_fills_.size()) {
     absl::StrAppend(&str, "Observer's trade offer: ");
-    std::pair<int, int> trade = DecodeTrade(trade_history_[player], num_items_);
+    std::pair<int, int> trade = DecodeTrade(order_fills_[player], num_items_);
     absl::StrAppend(&str, " ", trade.first, ":", trade.second, "\n");
   }
 
   // Players can see the other trade offers after the round.
   if (IsTerminal()) {
-    SPIEL_CHECK_LT(1 - player, trade_history_.size());
+    SPIEL_CHECK_LT(1 - player, order_fills_.size());
     absl::StrAppend(&str, "Other players's trade offer: ");
     std::pair<int, int> trade =
-        DecodeTrade(trade_history_[1 - player], num_items_);
+        DecodeTrade(order_fills_[1 - player], num_items_);
     absl::StrAppend(&str, " ", trade.first, ":", trade.second, "\n");
   }
 
@@ -204,12 +204,12 @@ void TradeCommState::ObservationTensor(Player player,
   offset += num_items_;
 
   // one-hot vector for the size of the trade history
-  values[offset + trade_history_.size()] = 1;
+  values[offset + order_fills_.size()] = 1;
   offset += 3;
 
   // one-hot vector for observing player's trade history if it has been made.
-  if (player < trade_history_.size()) {
-    const auto& trade = DecodeTrade(trade_history_[player], num_items_);
+  if (player < order_fills_.size()) {
+    const auto& trade = DecodeTrade(order_fills_[player], num_items_);
     values[offset + trade.first] = 1;
     values[offset + num_items_ + trade.second] = 1;
   }
@@ -250,7 +250,7 @@ void TradeCommState::DoApplyAction(Action action) {
       }
       cur_player_ = NextPlayerRoundRobin(cur_player_, num_players_);
     } else {
-      trade_history_.push_back(action);
+      order_fills_.push_back(action);
       cur_player_ = NextPlayerRoundRobin(cur_player_, num_players_);
     }
   }
@@ -305,7 +305,7 @@ std::string TradeCommState::ToString() const {
                   "\nPhase: ", phase_ == Phase::kTrade ? "trade" : "comm");
   absl::StrAppend(&str, "\nComm history: ", absl::StrJoin(comm_history_, " "));
   absl::StrAppend(&str, "\nTrade history:");
-  for (Action trade_action : trade_history_) {
+  for (Action trade_action : order_fills_) {
     std::pair<int, int> trade = DecodeTrade(trade_action, num_items_);
     absl::StrAppend(&str, " ", trade.first, ":", trade.second);
   }

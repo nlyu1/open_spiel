@@ -14,7 +14,9 @@ Config::Config(int steps_per_player, int max_contracts_per_trade, int customer_m
     max_contract_value_(max_contract_value), 
     num_players_(num_players) {}
 
-ActionManager::ActionManager(const Config& config) : config_(config) {}
+ActionManager::ActionManager(const Config& config) : config_(config) {
+    SPIEL_CHECK_GE(config.num_players_, 4); 
+}
 
 std::string ChanceContractValueAction::ToString() const {
   return "Environment settles one piece of contract value to " + std::to_string(contract_value_);
@@ -24,7 +26,7 @@ std::string ChanceHighLowAction::ToString() const {
     return absl::StrCat("Environment chooses ", is_high_ ? "high" : "low", " contract settlement");
 }
 
-std::string ChanceCustomerTradeAction::ToString() const {
+std::string PlayerQuoteAction::ToString() const {
     return absl::StrCat(
         bid_price_, " @ ", ask_price_, " [", bid_size_, " x ", ask_size_, "]"
     );
@@ -57,12 +59,12 @@ std::string PlayerTradingAction::ToString() const {
 
 
 // ActionVariant utility functions
-std::string ToString(const ActionVariant& action) {
+std::string ActionVariantToString(const ActionVariant& action) {
     return std::visit([](const auto& a) { return a.ToString(); }, action);
 }
 
 std::ostream& operator<<(std::ostream& os, const ActionVariant& action) {
-    os << ToString(action);
+    os << ActionVariantToString(action);
     return os;
 }
 

@@ -1,5 +1,4 @@
-#ifndef OPEN_SPIEL_GAMES_HIGH_LOW_TRADING_H_
-#define OPEN_SPIEL_GAMES_HIGH_LOW_TRADING_H_
+#pragma once 
 
 #include <string>
 #include <vector>
@@ -25,9 +24,9 @@ class OrderEntry {
         std::string ToString() const; 
 };
 
-class TradeEntry {
+class OrderFillEntry {
     public: 
-        TradeEntry(double price, uint64_t size, uint64_t tid, uint64_t quote_size, customerId quoter_id, customerId customer_id, uint64_t quote_tid, bool is_sell_quote) : price(price), size(size), tid(tid), quote_size(quote_size), quoter_id(quoter_id), customer_id(customer_id), quote_tid(quote_tid), is_sell_quote(is_sell_quote) {} 
+        OrderFillEntry(double price, uint64_t size, uint64_t tid, uint64_t quote_size, customerId quoter_id, customerId customer_id, uint64_t quote_tid, bool is_sell_quote) : price(price), size(size), tid(tid), quote_size(quote_size), quoter_id(quoter_id), customer_id(customer_id), quote_tid(quote_tid), is_sell_quote(is_sell_quote) {} 
 
         double price; 
         uint64_t size; 
@@ -57,7 +56,7 @@ class Market {
         Market() {}
 
         void ClearOrders(customerId customer_id); 
-        std::vector<TradeEntry> AddOrder(OrderEntry order); 
+        std::vector<OrderFillEntry> AddOrder(OrderEntry order); 
 
         std::vector<customerId> GetCustomers(); 
         std::vector<OrderEntry> GetOrders(customerId customer_id); 
@@ -66,7 +65,7 @@ class Market {
 
     private:
         // Checks the current stack & returns any matched orders
-        std::vector<TradeEntry> MatchOrders(); 
+        std::vector<OrderFillEntry> MatchOrders(); 
         OrderQueue buy_orders_; 
         OrderQueue sell_orders_; 
 };
@@ -74,7 +73,5 @@ class Market {
 }  // namespace trade_matching
 }  // namespace open_spiel
 
-// Stream operator for std::vector<TradeEntry>
-std::ostream& operator<<(std::ostream& os, const std::vector<open_spiel::trade_matching::TradeEntry>& trades);
-
-#endif  // OPEN_SPIEL_GAMES_HIGH_LOW_TRADING_H_ 
+// Stream operator for std::vector<OrderFillEntry>
+std::ostream& operator<<(std::ostream& os, const std::vector<open_spiel::trade_matching::OrderFillEntry>& trades);
