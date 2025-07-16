@@ -48,6 +48,8 @@ add_executable(count_all_states count_all_states.cc ${OPEN_SPIEL_OBJECTS})
 add_executable(market_example market_example.cc ${OPEN_SPIEL_OBJECTS})
 add_test(market_example_test market_example)
 
+add_executable(high_low_trading_interactive_play interactive_play.cc ${OPEN_SPIEL_OBJECTS})
+
 if (OPEN_SPIEL_BUILD_WITH_LIBTORCH)
   add_executable(alpha_zero_torch_example alpha_zero_torch_example.cc
                 ${OPEN_SPIEL_OBJECTS}

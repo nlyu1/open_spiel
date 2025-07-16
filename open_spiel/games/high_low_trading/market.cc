@@ -41,6 +41,10 @@ void Market::ClearOrders(customerId customer_id) {
 }
 
 std::vector<OrderFillEntry> Market::AddOrder(OrderEntry order) {
+    // Ignore 0-sized orders. 
+    if (order.size == 0) {
+        return {};
+    }
     if (order.is_bid) {
         buy_orders_.push(order);
     } else {
@@ -167,16 +171,16 @@ std::string OrderFillEntry::ToString() const {
 
 std::string Market::ToString() const{
     // Specification: 
-    // **** Sell orders (number of sell orders)**** 
+    // #### Sell orders (number of sell orders)#### 
     // Highest sell order: to_string() of that order 
     // .... 
     // Lowest sell order: to_string() of that order 
-    // *****************************
-    // **** Buy orders (number) **** 
+    // #############################
+    // #### Buy orders (number) #### 
     // Highest buy order: to_string() of that order 
     // ....
     // Lowest buy order: to_string() of that order 
-    // *****************************
+    // #############################
     
     std::ostringstream oss;
     
@@ -193,11 +197,11 @@ std::string Market::ToString() const{
     std::reverse(sell_orders_vec.begin(), sell_orders_vec.end());
     
     // Display sell orders
-    oss << "**** Sell orders (" << sell_orders_vec.size() << ") ****\n";
+    oss << "####### " << sell_orders_vec.size() << " sell orders #######\n";
     for (const auto& order : sell_orders_vec) {
         oss << order.ToString() << "\n";
     }
-    oss << "*****************************\n";
+    oss << "#############################\n";
     
     // Extract all buy orders
     std::vector<OrderEntry> buy_orders_vec;
@@ -210,11 +214,11 @@ std::string Market::ToString() const{
     // For buy orders, the priority queue already gives us highest price first, which is what we want
     
     // Display buy orders
-    oss << "**** Buy orders (" << buy_orders_vec.size() << ") ****\n";
+    oss << "####### " << buy_orders_vec.size() << " buy orders #######\n";
     for (const auto& order : buy_orders_vec) {
         oss << order.ToString() << "\n";
     }
-    oss << "*****************************";
+    oss << "#############################";
     
     return oss.str();
 }
@@ -224,10 +228,10 @@ std::string Market::ToString() const{
 
 // Stream operator for std::vector<OrderFillEntry>
 std::ostream& operator<<(std::ostream& os, const std::vector<open_spiel::trade_matching::OrderFillEntry>& trades) {
-    os << "************* Trade entries *************\n";
+    os << "############# Trade entries #############\n";
     for (size_t i = 0; i < trades.size(); ++i) {
         os << (i + 1) << ". " << trades[i].ToString() << "\n";
     }
-    os << "*****************************************\n";
+    os << "#########################################\n";
     return os;
 }

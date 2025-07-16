@@ -154,10 +154,10 @@ void TestSpecificActionConversions() {
   SPIEL_CHECK_TRUE(std::holds_alternative<ChanceCustomerSizeAction>(customer_action));
   SPIEL_CHECK_EQ(std::get<ChanceCustomerSizeAction>(customer_action).customer_size_, 1);
   
-  // Test PlayerTradingAction
+  // Test PlayerQuoteAction
   ActionVariant trading_action = action_manager.RawToStructuredAction(GamePhase::kPlayerTrading, 0);
-  SPIEL_CHECK_TRUE(std::holds_alternative<PlayerTradingAction>(trading_action));
-  PlayerTradingAction trading = std::get<PlayerTradingAction>(trading_action);
+  SPIEL_CHECK_TRUE(std::holds_alternative<PlayerQuoteAction>(trading_action));
+  PlayerQuoteAction trading = std::get<PlayerQuoteAction>(trading_action);
   SPIEL_CHECK_EQ(trading.bid_size_, 0);
   SPIEL_CHECK_EQ(trading.ask_size_, 0);
   SPIEL_CHECK_EQ(trading.bid_price_, 1);
@@ -192,7 +192,7 @@ void TestStringRepresentations() {
   std::string size_str = size_action.ToString();
   SPIEL_CHECK_FALSE(size_str.empty());
   
-  PlayerTradingAction trading_action(1, 10, 2, 15);
+  PlayerQuoteAction trading_action(1, 10, 2, 15);
   std::string trading_str = trading_action.ToString();
   SPIEL_CHECK_FALSE(trading_str.empty());
   

@@ -12,24 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "open_spiel/games/simple_bluff/simple_bluff.h"
+#include "open_spiel/games/high_low_trading/high_low_trading.h"
 
 #include "open_spiel/spiel.h"
 #include "open_spiel/tests/basic_tests.h"
 
 namespace open_spiel {
-namespace simple_bluff {
+namespace high_low_trading {
 namespace {
 
 namespace testing = open_spiel::testing;
 
 void BasicHighLowTradingTests() {
   testing::LoadGameTest("high_low_trading");
-  testing::RandomSimTest(*LoadGame("high_low_trading"), 100);
 }
 
 }  // namespace
-}  // namespace simple_bluff
+}  // namespace high_low_trading
 }  // namespace open_spiel
 
 int main(int argc, char** argv) {

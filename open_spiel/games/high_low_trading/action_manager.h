@@ -1,3 +1,63 @@
+// Copyright 2019 DeepMind Technologies Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// ================================================================================
+// HIGH LOW TRADING GAME - ACTION MANAGER
+// ================================================================================
+//
+// OVERVIEW:
+// The ActionManager handles the conversion between raw integer actions (used by
+// OpenSpiel's interface) and structured action objects for the High Low Trading game.
+// It manages the different phases of the game and ensures actions are properly
+// encoded/decoded for each phase.
+//
+// GAME PHASES:
+// 1. kChanceValue (timesteps 0-1): Draw two random contract values [1, max_value]
+// 2. kChanceHighLow (timestep 2): Choose "high" or "low" settlement randomly  
+// 3. kChancePermutation (timestep 3): Assign player roles via random permutation
+//    - First 2 positions -> ValueCheaters (know contract values)
+//    - Position 2 -> HighLowCheater (knows settlement direction)
+//    - Remaining positions -> Customers (have target positions)
+// 4. kCustomerSize (timesteps 4 to 3+num_customers): Assign target positions
+//    to customer players (random values in [-customer_max_size, customer_max_size])
+// 5. kPlayerTrading (remaining timesteps): Players place trading quotes in 
+//    round-robin order
+//
+// ACTION ENCODING:
+// - Chance actions are encoded as uniform random choices within valid ranges
+// - Player trading actions encode (bid_size, bid_price, ask_size, ask_price)
+//   into a single integer using positional encoding
+// - Permutation actions use factorial number system (Lehmer code) to encode
+//   all possible player role assignments
+//
+// ACTION CONVERSION:
+// - RawToStructuredAction(): Converts OpenSpiel integer action to typed action object
+// - StructuredToRawAction(): Converts typed action object back to integer
+// - valid_action_range(): Returns [min, max] legal action values for each phase
+//
+// CONFIGURATION:
+// Game parameters are encapsulated in Config class:
+// - steps_per_player: How many trading rounds each player gets
+// - max_contracts_per_trade: Maximum position size in single quote
+// - customer_max_size: Range for customer target positions
+// - max_contract_value: Maximum possible contract settlement value  
+// - num_players: Total number of players (minimum 4)
+//
+// DEFAULT PARAMETERS:
+// All default game parameters are defined as constants and can be overridden
+// through OpenSpiel's GameParameters interface.
+
 #pragma once 
 
 #include <iostream>
@@ -5,13 +65,15 @@
 #include <string> 
 #include <array>
 #include <vector>
+#include "open_spiel/spiel.h"
+#include "open_spiel/spiel_utils.h"
+using namespace open_spiel; 
 
 inline constexpr int kDefaultStepsPerPlayer = 100; 
 inline constexpr int kDefaultMaxContractsPerTrade = 5; 
 inline constexpr int kDefaultCustomerMaxSize = 5; 
 inline constexpr int kDefaultMaxContractValue = 30;
 inline constexpr int kDefaultNumPlayers = 5; 
-typedef int Action; 
 typedef int Player; 
 
 class Config {
@@ -22,6 +84,7 @@ class Config {
     int max_contract_value_ = kDefaultMaxContractValue; 
     int num_players_ = kDefaultNumPlayers; 
 
+    std::string ToString() const; 
     Config() = default;
     Config(int steps_per_player, int max_contracts_per_trade, int customer_max_size, int max_contract_value, int num_players); 
 }; 
@@ -112,26 +175,12 @@ class ChanceCustomerSizeAction {
     std::string ToString() const; 
 }; 
 
-class PlayerTradingAction {
-  public:
-    PlayerTradingAction() : bid_size_(0), bid_price_(1), ask_size_(0), ask_price_(1) {}  // Default constructor
-    PlayerTradingAction(int bid_size, int bid_price, int ask_size, int ask_price) 
-        : bid_size_(bid_size), bid_price_(bid_price), ask_size_(ask_size), ask_price_(ask_price) {}
-    
-    int bid_size_; // [-MaxContractPerTrade, MaxContractPerTrade]
-    int bid_price_; // [0, MaxContractValue]
-    int ask_size_; // [-MaxContractPerTrade, MaxContractPerTrade]
-    int ask_price_; // [0, MaxContractValue]
-    std::string ToString() const; 
-}; 
-
 using ActionVariant = std::variant<
   ChanceContractValueAction,
   ChanceHighLowAction,
   PlayerQuoteAction,
   ChancePermutationAction,
-  ChanceCustomerSizeAction,
-  PlayerTradingAction
+  ChanceCustomerSizeAction
 >; 
 
 // Utility functions for ActionVariant

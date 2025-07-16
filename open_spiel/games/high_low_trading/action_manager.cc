@@ -14,7 +14,13 @@ Config::Config(int steps_per_player, int max_contracts_per_trade, int customer_m
     max_contract_value_(max_contract_value), 
     num_players_(num_players) {}
 
+std::string Config::ToString() const {
+    return absl::StrCat(
+        "Config(steps_per_player=", steps_per_player_, ", max_contracts_per_trade=", max_contracts_per_trade_, ", customer_max_size=", customer_max_size_, ", max_contract_value=", max_contract_value_, ", num_players=", num_players_, ")");
+}
+
 ActionManager::ActionManager(const Config& config) : config_(config) {
+    // std::cout << "ActionManager constructor called with config: " << config.ToString() << std::endl; 
     SPIEL_CHECK_GE(config.num_players_, 4); 
 }
 
@@ -33,14 +39,25 @@ std::string PlayerQuoteAction::ToString() const {
 }
 
 std::string ChancePermutationAction::ToString() const {
-    std::string result = "Player roles: ";
+    std::string result; 
     for (size_t i = 0; i < player_roles_.size(); ++i) {
         if (i > 0) result += ", ";
         result += "P" + std::to_string(i) + "=";
-        switch (player_roles_[i]) {
-            case PlayerRole::kValueCheater: result += "ValueCheater"; break;
-            case PlayerRole::kHighLowCheater: result += "HighLowCheater"; break;
-            case PlayerRole::kCustomer: result += "Customer"; break;
+        int permutation_id = -1; 
+        for (int j = 0; j < permutation_.size(); ++j) {
+            if (permutation_[j] == i) {
+              permutation_id = j; 
+              break; 
+            }
+        }
+        if (permutation_id == 0) {
+            result += "ValueCheater1"; 
+        } else if (permutation_id == 1) {
+            result += "ValueCheater2"; 
+        } else if (permutation_id == 2) {
+            result += "HighLowCheater"; 
+        } else {
+            result += "Customer" + std::to_string(permutation_id - 3); 
         }
     }
     return result;
@@ -49,14 +66,6 @@ std::string ChancePermutationAction::ToString() const {
 std::string ChanceCustomerSizeAction::ToString() const {
     return absl::StrCat("Customer target position: ", customer_size_);
 }
-
-std::string PlayerTradingAction::ToString() const {
-    return absl::StrCat(
-        "Price ", bid_price_, " @ ", ask_price_, " | Size ", bid_size_, " x ", ask_size_
-    );
-}
-
-
 
 // ActionVariant utility functions
 std::string ActionVariantToString(const ActionVariant& action) {
@@ -99,9 +108,9 @@ GamePhase ActionManager::game_phase_of_timestep(int timestep) const {
         return GamePhase::kChanceHighLow; 
     } else if (timestep == 3) {
         return GamePhase::kChancePermutation; 
-    } else if (timestep < 4 + config_.num_players_) {
+    } else if (timestep < 1 + config_.num_players_) {
         return GamePhase::kCustomerSize; 
-    } else if (timestep < 4 + config_.num_players_ + config_.steps_per_player_ * config_.num_players_) {
+    } else if (timestep < 1 + config_.num_players_ + config_.steps_per_player_ * config_.num_players_) {
         return GamePhase::kPlayerTrading; 
     } else {
         return GamePhase::kTerminal; 
@@ -117,6 +126,8 @@ int factorial(int n) {
 }
 
 std::pair<int, int> ActionManager::valid_action_range(GamePhase phase) const {
+    // std::cout << "valid_action_range called with phase: " << phase << std::endl; 
+    // std::cout << "config_: " << config_.ToString() << std::endl; 
     switch (phase) {
         case GamePhase::kChanceValue: return {0, config_.max_contract_value_ - 1}; 
         case GamePhase::kChanceHighLow: return {0, 1}; 
@@ -147,6 +158,9 @@ ActionVariant ActionManager::RawToStructuredAction(GamePhase phase, Action raw_a
             return ChanceHighLowAction(raw_action == 1 ? true : false); 
         }
         case GamePhase::kChancePermutation: {
+            // permutation[unpermed_id] = [permed_id]
+            // The (0, 1, 2, ...) = (valueCheater1, valueCheater2, highLowCheater, Customers...) arrangement is in `perm`. 
+            // player_role[permed id] = permed_id's role 
             if (raw_action < 0 || raw_action >= factorial(config_.num_players_)) {
                 open_spiel::SpielFatalError(absl::StrCat("Invalid raw action: ", raw_action)); 
             }
@@ -154,12 +168,12 @@ ActionVariant ActionManager::RawToStructuredAction(GamePhase phase, Action raw_a
             std::vector<PlayerRole> player_roles(config_.num_players_); 
             for (int i = 0; i < config_.num_players_; ++i) {
                 int perm_id = perm[i]; 
-                if (perm_id == 0 || perm_id == 1) {
-                    player_roles[i] = PlayerRole::kValueCheater; 
-                } else if (perm_id == 2) {
-                    player_roles[i] = PlayerRole::kHighLowCheater; 
+                if (i == 0 || i == 1) {
+                    player_roles[perm_id] = PlayerRole::kValueCheater; 
+                } else if (i == 2) {
+                    player_roles[perm_id] = PlayerRole::kHighLowCheater; 
                 } else {
-                    player_roles[i] = PlayerRole::kCustomer; 
+                    player_roles[perm_id] = PlayerRole::kCustomer; 
                 }
             }
             return ChancePermutationAction(player_roles, perm); 
@@ -192,7 +206,7 @@ ActionVariant ActionManager::RawToStructuredAction(GamePhase phase, Action raw_a
             int bid_price = rolling / bid_price_denom + 1; 
             rolling = rolling % bid_price_denom; 
             int ask_price = rolling + 1; 
-            return PlayerTradingAction(bid_size, bid_price, ask_size, ask_price); 
+            return PlayerQuoteAction(bid_size, bid_price, ask_size, ask_price); 
         }
         case GamePhase::kTerminal: {
             open_spiel::SpielFatalError("Invalid terminal phase for action conversion"); 
@@ -224,7 +238,7 @@ Action ActionManager::StructuredToRawAction(GamePhase phase, const ActionVariant
             return adjusted_size + config_.customer_max_size_; 
         }
         case GamePhase::kPlayerTrading: {
-            PlayerTradingAction quote_action = std::get<PlayerTradingAction>(structured_action); 
+            PlayerQuoteAction quote_action = std::get<PlayerQuoteAction>(structured_action); 
             int bid_size = quote_action.bid_size_; 
             int adjusted_bid_price = quote_action.bid_price_ - 1; 
             int ask_size = quote_action.ask_size_; 
